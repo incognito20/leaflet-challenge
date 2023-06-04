@@ -1,69 +1,105 @@
-// Set url variable for earthquake info
-url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+// Set url to variable
+let url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
-// Creating the map object
-var myMap = L.map("map", {
-  center: [41.84507897175943, -101.92570613673072],
-  zoom: 3
-});
-
-// Adding the tile layer
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(myMap);
-
-
-
-// The function that will determine the color of a neighborhood based on the borough that it belongs to
-function chooseColor(magnitude) {
-  if (magnitude == 1.33) return "yellow";
-  else if (magnitude == "Bronx") return "red";
-  else if (magnitude == "Manhattan") return "orange";
-  else if (magnitude == "Queens") return "green";
-  else if (magnitude == "Staten Island") return "purple";
-  else return "black";
-}
-
-// Getting our GeoJSON data
+// Query and set response
 d3.json(url).then(function(data) {
-  // Creating a GeoJSON layer with the retrieved data
-  L.geoJson(data, {
-    // Styling each feature (in this case, a neighborhood)
-    style: function(feature) {
-      return {
-        color: "white",
-        // Call the chooseColor() function to decide which color to color our neighborhood. (The color is based on the borough.)
-        fillColor: chooseColor(feature.properties.mag),
-        fillOpacity: 0.5,
-        weight: 1.5
-      };
-    },
-    // This is called on each feature.
-    onEachFeature: function(feature, layer) {
-      // Set the mouse events to change the map styling.
-      layer.on({
-        // When a user's mouse cursor touches a map feature, the mouseover event calls this function, which makes that feature's opacity change to 90% so that it stands out.
-        mouseover: function(event) {
-          layer = event.target;
-          layer.setStyle({
-            fillOpacity: 0.9
-          });
-        },
-        // When the cursor no longer hovers over a map feature (that is, when the mouseout event occurs), the feature's opacity reverts back to 50%.
-        mouseout: function(event) {
-          layer = event.target;
-          layer.setStyle({
-            fillOpacity: 0.5
-          });
-        },
-        // When a feature (neighborhood) is clicked, it enlarges to fit the screen.
-        click: function(event) {
-          myMap.fitBounds(event.target.getBounds());
-        }
-      });
-      // Giving each feature a popup with information that's relevant to it
-      layer.bindPopup("<h1>" + feature.properties.title + "</h1> <hr> <h2>" + feature.properties.type + "</h2>");
+    createFeatures(data.features);
+  });
 
+
+// Sets the color of marker based on depth. Deeper = darker.
+function markerColor(depth) {
+    if (depth >= 150) {
+        return "#660066";
+    } else if (depth < 150 && depth >= 120) {
+        return "#cc00cc";
+    } else if (depth < 120 && depth > 90) {
+        return "#ff00ff";
+    } else if (depth < 90 && depth > 60) {
+        return "#ff66ff";
+    } else if (depth < 60 && depth > 30) {
+        return "#ff99ff";
+    } else {
+        return "#ffccff";
     }
-  }).addTo(myMap);
-});
+};
+
+// Sets the size of the marker based on the value of the magnitude. Multiplied by 3 for better visualization.
+function markerSize(magnitude) {
+    return magnitude * 3;
+    }
+    
+// Runs for each item.
+function createFeatures(earthquakeData) {
+// When the marker is clicked on this provides location description, depth, and magnitude.
+    function onEachFeature(feature, layer) {
+      layer.bindPopup(`<h3>Location: ${feature.properties.place}</h3><h3>Depth: ${feature.geometry.coordinates[2]}</h3><h3>Magnitude: ${feature.properties.mag}</h3>`)
+    } 
+  
+// Sets the circle marker for each object in the array, sets radius from markerSize, and color from markerColor.
+    let earthquakes = L.geoJSON(earthquakeData, {
+        pointToLayer: function(feature, latlng) {
+            return L.circleMarker(latlng, {
+                radius: markerSize(feature.properties.mag),
+                fillColor: markerColor(feature.geometry.coordinates[2]),
+                color: "#660066",
+                weight: 1,
+                opacity: .75,
+                fillOpacity: 0.5
+            });
+        },
+        onEachFeature: onEachFeature
+      });
+  
+      // Creates earthquakes layer
+    createMap(earthquakes);
+  }
+
+  function createMap(earthquakes) {
+
+    // Sets streetmap
+    let street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    
+    });
+  
+  
+    // Sets the baseMaps object
+    let baseMaps = {
+      "Street": street
+    };
+  
+    // Sets the overlay object
+    let overlayMaps = {
+      "Earthquakes": earthquakes
+    };
+    
+    // Creates map with the provided center and with a wide view. Both layers are used.
+    let myMap = L.map("map", {
+      center: [
+        35.01528515699986, -97.51070301108402
+      ],
+      zoom: 3,
+      layers: [street, earthquakes]
+    });
+  
+// Creates the map legend
+let legend = L.control({position: "bottomright"});
+
+// Depth values represent a value from each of the six possible data ranges so the loop captures each possible color value.
+legend.onAdd = function() {
+    var div = L.DomUtil.create("div", "legend");
+    var depth = [1, 35, 75, 100, 130, 151];
+    var labels = ["Less than 30", "30 to 60", "60 to 90", "90 to 120", "120 to 150", "Greater than 150"];
+    div.innerHTML = '<div>Depth of the event in kilometers</div>';
+    for (var i = 0; i < depth.length; i++){
+      div.innerHTML += '<i style="background:' + markerColor(depth[i]) + '">&nbsp;&nbsp;&nbsp;&nbsp;</i>&nbsp;'+
+                      labels[i] + '<br>';
+    }
+    return div;
+};
+  
+  
+// Adds legend to map
+legend.addTo(myMap);
+};
