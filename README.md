@@ -17,5 +17,7 @@ Leaflet-Part-1/*.* = All other files provided as part of this project (unmodifie
 
 In Part 1 of this challenge a dataset is selected from the USGS. "All Earthquakes from the Past 7 Days" is the dataset used in this visualization. The visualization provides plots of all earthquakes by their size and depth. Higher magnitude earthquakes appear larger while earthquakes from greater depths appear darker. When clicking on individual markers the location, depth, and magnitude of the event is provided.
 
+### Part 2
 
+Part 2 of this challenge was optional and is not contained in this repo.
 
